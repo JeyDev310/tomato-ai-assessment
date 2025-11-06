@@ -98,7 +98,7 @@ docker compose up -d
 ### Stopping Containers
 
 ```bash
-docker-compose down
+docker compose down
 ```
 
 ### Viewing Logs

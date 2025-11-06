@@ -7,6 +7,7 @@ import NoteModal from "@/components/note-modal"
 import NotesList from "@/components/notes-list"
 import SearchBar from "@/components/search-bar"
 import AuthForm from "@/components/auth-form"
+import { DeleteConfirmationModal } from "@/components/delete-confirmation-modal"
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL
 
@@ -22,7 +23,6 @@ export default function Home() {
   const [isAuthenticated, setIsAuthenticated] = useState(false)
   const [token, setToken] = useState<string | null>(null)
   const [notes, setNotes] = useState<Note[]>([])
-  const [filteredNotes, setFilteredNotes] = useState<Note[]>([])
   const [loading, setLoading] = useState(false)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingNote, setEditingNote] = useState<Note | null>(null)
@@ -31,6 +31,8 @@ export default function Home() {
   const [searchValue, setSearchValue] = useState("")
   const [searchType, setSearchType] = useState<"keyword" | "tag">("keyword")
   const [error, setError] = useState("")
+  const [isConfirm, setIsConfirm] = useState(false)
+
 
   useEffect(() => {
     const storedToken = localStorage.getItem("auth_token")
@@ -41,11 +43,25 @@ export default function Home() {
     }
   }, [])
 
+  useEffect(() => {
+
+    const storedToken = localStorage.getItem("auth_token")
+    if (storedToken) {
+      fetchNotes(storedToken);
+    }
+
+  }, [searchValue, searchType])
+
   const fetchNotes = async (authToken: string) => {
     setLoading(true)
     setError("")
     try {
-      const response = await fetch(`${API_BASE_URL}/notes/`, {
+      let endpoint = `${API_BASE_URL}/notes/search`;
+      if (searchValue) {
+        endpoint = endpoint + (searchType == "keyword" ? `?q=${searchValue}` : `?tag=${searchValue}`);
+      }
+
+      const response = await fetch(endpoint, {
         headers: {
           Authorization: `Bearer ${authToken}`,
           "Content-Type": "application/json",
@@ -53,9 +69,7 @@ export default function Home() {
       })
       if (response.ok) {
         const data = await response.json()
-        console.log("Fetched notes:", data)
         setNotes(data)
-        applySearch(data, searchValue, searchType)
       } else {
         console.error("Failed to fetch notes:", response.status)
         setError("Failed to fetch notes")
@@ -79,7 +93,6 @@ export default function Home() {
     setToken(null)
     setIsAuthenticated(false)
     setNotes([])
-    setFilteredNotes([])
     localStorage.removeItem("auth_token")
   }
 
@@ -124,14 +137,13 @@ export default function Home() {
     }
   }
 
-  const handleDeleteNote = async (noteId: number) => {
+  const handleDeleteNote = async () => {
     if (!token) return
 
-    setIsDeletingId(noteId)
     setError("")
     try {
-      console.log("Deleting note:", noteId)
-      const response = await fetch(`${API_BASE_URL}/notes/${noteId}/`, {
+      console.log("Deleting note:", isDeletingId)
+      const response = await fetch(`${API_BASE_URL}/notes/${isDeletingId}/`, {
         method: "DELETE",
         headers: {
           Authorization: `Bearer ${token}`,
@@ -153,29 +165,9 @@ export default function Home() {
     }
   }
 
-  const applySearch = (notesToFilter: Note[], value: string, type: "keyword" | "tag") => {
-    if (!value.trim()) {
-      setFilteredNotes(notesToFilter)
-      return
-    }
-
-    const filtered = notesToFilter.filter((note) => {
-      if (type === "keyword") {
-        const lowerValue = value.toLowerCase()
-        return note.title.toLowerCase().includes(lowerValue) || note.content.toLowerCase().includes(lowerValue)
-      } else {
-        const searchTag = value.toLowerCase().trim()
-        return note.tags.some((tag) => tag.toLowerCase().includes(searchTag))
-      }
-    })
-
-    setFilteredNotes(filtered)
-  }
-
   const handleSearch = (value: string, type: "keyword" | "tag") => {
     setSearchValue(value)
     setSearchType(type)
-    applySearch(notes, value, type)
   }
 
   if (!isAuthenticated) {
@@ -210,22 +202,25 @@ export default function Home() {
 
         <div>
           <h2 className="text-lg font-semibold mb-6 text-foreground">
-            {filteredNotes.length} Note{filteredNotes.length !== 1 ? "s" : ""}
+            {notes.length} Note{notes.length !== 1 ? "s" : ""}
           </h2>
           {loading ? (
             <p className="text-muted-foreground">Loading notes...</p>
-          ) : filteredNotes.length === 0 && searchValue ? (
+          ) : notes.length === 0 && searchValue ? (
             <p className="text-muted-foreground">No notes match your search.</p>
-          ) : filteredNotes.length === 0 ? (
+          ) : notes.length === 0 ? (
             <p className="text-muted-foreground">No notes yet. Create one to get started!</p>
           ) : (
             <NotesList
-              notes={filteredNotes}
+              notes={notes}
               onEdit={(note) => {
                 setEditingNote(note)
                 setIsModalOpen(true)
               }}
-              onDelete={handleDeleteNote}
+              onDelete={(noteId) => {
+                setIsConfirm(true)
+                setIsDeletingId(noteId)
+              }}
               isDeletingId={isDeletingId ?? undefined}
             />
           )}
@@ -240,6 +235,12 @@ export default function Home() {
           onSubmit={handleSubmitNote}
           initialNote={editingNote}
           isLoading={isSubmitting}
+        />
+        <DeleteConfirmationModal
+          open={isConfirm}
+          setOpen={setIsConfirm}
+          onConfirm={handleDeleteNote}
+          onCancel={() => setIsDeletingId(null)}
         />
       </div>
     </main>

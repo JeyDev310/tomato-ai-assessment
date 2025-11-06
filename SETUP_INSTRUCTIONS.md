@@ -24,7 +24,8 @@ cp .env.example .env
 ### 3. Build and run with Docker Compose
 
 ```bash
-docker-compose up --build
+docker compose build
+docker compose up -d
 ```
 
 This will:
@@ -93,7 +94,7 @@ python manage.py runserver
 
 1. In the root directory, install dependencies:
 ```bash
-npm install
+pnpm install
 ```
 
 2. Create `.env.local`:
@@ -103,7 +104,7 @@ NEXT_PUBLIC_API_URL=http://localhost:8000/api
 
 3. Start the development server:
 ```bash
-npm run dev
+pnpm dev
 ```
 
 ## API Documentation
@@ -113,6 +114,7 @@ npm run dev
 - **Register**: `POST /api/auth/register/`
   ```json
   {
+    "username": "user",
     "email": "user@example.com",
     "password": "password123"
   }
@@ -121,7 +123,7 @@ npm run dev
 - **Login**: `POST /api/auth/token/`
   ```json
   {
-    "email": "user@example.com",
+    "username": "user@example.com",
     "password": "password123"
   }
   ```
@@ -142,8 +144,8 @@ All endpoints require authentication header: `Authorization: Bearer <token>`
 - **Get note**: `GET /api/notes/{id}/`
 - **Update note**: `PUT /api/notes/{id}/`
 - **Delete note**: `DELETE /api/notes/{id}/`
-- **Search by keyword**: `GET /api/notes/search_by_keyword/?keyword=search_term`
-- **Search by tag**: `GET /api/notes/search_by_tag/?tag=tag_name`
+- **Search by keyword**: `GET /api/notes/search/?q=search_term`
+- **Search by tag**: `GET /api/notes/search/?tag=tag_name`
 
 ## Features
 
