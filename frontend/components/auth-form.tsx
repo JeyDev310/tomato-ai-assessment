@@ -13,17 +13,19 @@ interface AuthFormProps {
   onAuth: (token: string) => void
 }
 
+type AuthError = Record<string, string[]>
+
 export default function AuthForm({ onAuth }: AuthFormProps) {
   const [isLogin, setIsLogin] = useState(true)
   const [username, setUsername] = useState("")
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
-  const [error, setError] = useState("")
+  const [error, setError] = useState<AuthError | null>(null)
   const [loading, setLoading] = useState(false)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    setError("")
+    setError(null)
     setLoading(true)
 
     try {
@@ -43,7 +45,7 @@ export default function AuthForm({ onAuth }: AuthFormProps) {
       const data = await response.json()
 
       if (!response.ok) {
-        setError(data.detail || "Authentication failed")
+        setError(data)
         return
       }
 
@@ -51,7 +53,7 @@ export default function AuthForm({ onAuth }: AuthFormProps) {
         onAuth(data.access)
       }
     } catch (err) {
-      setError("Connection error. Make sure the backend is running.")
+      setError({ "error" : ["Connection error. Make sure the backend is running."]})
     } finally {
       setLoading(false)
     }
@@ -65,7 +67,14 @@ export default function AuthForm({ onAuth }: AuthFormProps) {
 
         {error && (
           <div className="mb-4 p-3 bg-destructive/10 text-destructive rounded border border-destructive/20">
-            {error}
+            {Object.entries(error).map(([field, messages]) => (
+              <div key={field}>
+                <strong className="capitalize">{field}:</strong>
+                {messages.map((msg, index) => (
+                  <p className="text-red-600 text-sm" key={index}>{msg}</p>
+                ))}
+              </div>
+            ))}
           </div>
         )}
 
@@ -117,7 +126,7 @@ export default function AuthForm({ onAuth }: AuthFormProps) {
         <button
           onClick={() => {
             setIsLogin(!isLogin)
-            setError("")
+            setError(null)
           }}
           className="w-full mt-4 text-sm text-muted-foreground hover:text-foreground"
         >
